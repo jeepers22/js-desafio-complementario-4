@@ -1,8 +1,8 @@
 // ARRAYS DE OBJETOS (Globales)
 
 let usuarios = []
-let productos = []
-let carrito = []
+let productos
+let carrito
 
 // VAR DOM ELEMENTS
 
@@ -24,6 +24,7 @@ let domSearch
 let domSearchForm
 let domSearchProduct
 let domProductos
+let domCatalogoPrueba
 let domCloseSession
 let domCarrito
 let domTotalCompra
@@ -108,6 +109,7 @@ function domElementsInit() {
     domCarrito = document.getElementById("carrito-container")
     domBtnFinCompra = document.getElementById("btn-fin-compra")
     domTotalCompra = document.getElementById("carrito-total")
+    domCatalogoPrueba = document.getElementById("catalogo-prueba")
     domCloseSession = document.getElementById("close-session")
 }
 
@@ -118,6 +120,9 @@ function eventoLogin() {
     domLoginForm?.addEventListener("submit", gestionarLogin) // Al cambiar de HTML hay que verificar si el evento existe, sino da error
 }
 
+function eventoCargaCatalogoPrueba() {
+    domCatalogoPrueba?.addEventListener("click", cargarCatalogoPrueba)
+}
 
 function eventoSearch() {
     domSearchForm?.addEventListener("submit", searchProduct)
@@ -146,7 +151,10 @@ function gestionarLogin(event) {
         domNavContainer.hidden = false
         domCloseSession.innerText += `${objectUser.user} (Salir)`
         domSearch.hidden = false
-        storageACarrito()
+        carrito = importarStorage("carrito") || []
+        productos = importarStorage("catalogo") || []
+        console.log(productos)
+        mostrarCarrito()
         !objectUser.esAdmin() ? mostrarProductos(productos, "client") : mostrarProductos(productos,"admin")
     }
     else {
@@ -188,6 +196,7 @@ productoExistente = (tipoProdAlta, marcaAlta) => productos.some((producto) => pr
 
 function mostrarProductos(listProducts, targetActions) {
     domProductos.innerHTML = ""  // Evita carga repetida de catálogo ante más de un despliegue de de compra
+
     listProducts.forEach((producto) => {
         let domCard = document.createElement("div")
         domCard.className = "producto-card"
@@ -215,10 +224,10 @@ function mostrarProductos(listProducts, targetActions) {
 
 function actionButtons (target, idProd) {
     const actions = {
-        "admin": `<button id="modificar-prod-${idProd}" class="btn modificar-prod">Modificar</button>
-                  <button id="eliminar-prod-${idProd}" class="btn eliminar-prod">Eliminar</button>`,
+        "admin": `<button id="modificar-prod-${idProd}" class="btn modificar-prod-btn">Modificar</button>
+                  <button id="eliminar-prod-${idProd}" class="btn eliminar-prod-btn">Eliminar</button>`,
         "client": `<input type="number" min="0" max="50" class="cant-producto" id="cant-carrito-${idProd}">
-                   <button type="submit" id="agregar-carrito-${idProd}" class="btn agregar-carrito">Agregar al carrito</button>`,
+                   <button type="submit" id="agregar-carrito-${idProd}" class="btn agregar-carrito-btn">Agregar al carrito</button>`,
         "": ""  //! En algun momento tengo que sacar esto
     }
     return actions[target]
@@ -238,7 +247,7 @@ function altaCarrito(id, stock, cantSolicitada) {
             cant: cantSolicitada
         }
         carrito.push(objectCarrito)
-        carritoAStorage()
+        enviarAStorage(carrito, "carrito")
         mostrarCarrito()
     }
     else {
@@ -252,7 +261,7 @@ function agregarRepetidoEnCarrito(id, stock, nuevaCantSolicitada) {
     const acumCantSolicitada = carrito[posicionRepetido].cant + nuevaCantSolicitada
     if (acumCantSolicitada <= stock) {
         carrito[posicionRepetido].cant = acumCantSolicitada
-        carritoAStorage()
+        enviarAStorage(carrito, "carrito")
         mostrarCarrito()
     }
     else {
@@ -260,17 +269,13 @@ function agregarRepetidoEnCarrito(id, stock, nuevaCantSolicitada) {
     }
 }
 
-function carritoAStorage() {
-    const carritoJSON = JSON.stringify(carrito)
-    localStorage.setItem("carrito", carritoJSON)
+function enviarAStorage(objeto, nombre) {
+    const objetoJSON = JSON.stringify(objeto)
+    localStorage.setItem(nombre, objetoJSON)
 }
 
-function storageACarrito() {
-    const carritoJson = localStorage.getItem("carrito")
-    if (carritoJson) {
-        carrito = JSON.parse(carritoJson)
-        mostrarCarrito()
-    }
+function importarStorage(nombre) {
+    return JSON.parse(localStorage.getItem(nombre))
 }
 
 /* El carrito guarda únicamente el id y la cantidad a comprar por el usuario
@@ -299,8 +304,9 @@ function mostrarCarrito() {   //Obtengo los atributos de los productos del catá
 
 function finalizarCompra() {
     calcularTotalCompra()
-    actualizarStock()
+    actualizarStockCatalogo()
     vaciarCarrito()
+    mostrarProductos(productos, "")
     mostrarCarrito()
 }
 
@@ -308,28 +314,23 @@ function calcularTotalCompra() {
     domTotalCompra.innerText += `$${totalCompra}`
 }
 
-function actualizarStock() {
+function actualizarStockCatalogo() {
     carrito.forEach(({id, cant}) => {
         const prodCatalogo = productos.find((prod) => prod.id === id)
         prodCatalogo.disminuirStock(cant)
     })
-    mostrarProductos(productos, "")
+    enviarAStorage(productos, "catalogo")
 }
 
 function vaciarCarrito() {
     carrito = []
-    localStorage.clear()
+    localStorage.removeItem("carrito")
 }
 
-function cerrarSesion() {
-    document.location.reload()
-}
+function cargarCatalogoPrueba() {
 
-/* ================ DECLARACIÓN FUNCIÓN PRINCIPAL ================ */
+    productos = []
 
-function main() {
-
-    // CARGA DE CATÁLOGO
     productos.push(new Producto(1, "Paleta", "BlackCrown", 60000, 10, "./img/paleta-black.png"))
     productos.push(new Producto(2, "Paleta", "ML10", 50000, 5, "./img/paleta-ml10.png"))
     productos.push(new Producto(3, "Paleta", "Siux", 65000, 15, "./img/paleta-siux.png"))
@@ -340,6 +341,17 @@ function main() {
     productos.push(new Producto(8, "Tubo Pelotas", "Adidas", 2000, 8, "./img/pelotas-adidas.jpg"))
     productos.push(new Producto(9, "Tubo Pelotas", "Prince", 1500, 4, "./img/pelotas-prince.jpg"))
 
+    enviarAStorage(productos, "catalogo")
+    mostrarProductos(productos, "client")
+}
+
+function cerrarSesion() {
+    document.location.reload()
+}
+
+/* ================ DECLARACIÓN FUNCIÓN PRINCIPAL ================ */
+
+function main() {
 
     // GENERACIÓN DE USUARIOS
     usuarios.push(new Usuario("admin", "1234", true))
@@ -348,6 +360,7 @@ function main() {
 
     domElementsInit()
     eventoLogin()
+    eventoCargaCatalogoPrueba()
     eventoSearch()
     eventoTotalCompra()
     eventoRegistroUsuario()

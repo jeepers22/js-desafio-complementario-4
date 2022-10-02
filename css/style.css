@@ -18,6 +18,11 @@ header {
     cursor: pointer;
 }
 
+.btn {
+    padding: 5px 10px;
+    border-radius: 5px;
+}
+
 ul {
     list-style: none;
 }
@@ -139,8 +144,6 @@ a {
     padding: 10px;
 }
 
-.agregar-carrito, .modificar-prod, .eliminar-prod {
+.agregar-carrito-btn, .modificar-prod-btn, .eliminar-prod-btn {
     margin: 5px 5px 5px 5px;
-    padding: 5px 10px;
-    border-radius: 5px;
 }
