@@ -124,7 +124,7 @@ function eventoSearch() {
 }
 
 function eventoTotalCompra() {
-    domBtnFinCompra?.addEventListener("click", calcularTotalCompra)
+    domBtnFinCompra?.addEventListener("click", finalizarCompra)
 }
 
 function eventoRegistroUsuario() {
@@ -141,7 +141,7 @@ function gestionarLogin(event) {
     event.preventDefault()
     let objectUser = new Usuario(domLoginUser.value, domLoginPass.value, false)
     domLoginForm.reset();
-    if (validarLogin(objectUser.user, objectUser.password)) {
+    if (validarLogin(objectUser)) {
         domLogin.hidden = true
         domNavContainer.hidden = false
         domCloseSession.innerText += `${objectUser.user} (Salir)`
@@ -156,7 +156,8 @@ function gestionarLogin(event) {
     }
 }
 
-validarLogin = (userLogin, passLogin) => usuarios.some((usuario) => (usuario.user === userLogin && usuario.password === passLogin))
+// Aplicando desestructuración en parámetros del objeto Usuario
+validarLogin = ({user, password}) => usuarios.some((usuario) => (usuario.user === user && usuario.password === password))
 
 function searchProduct(event) {
     event.preventDefault()
@@ -206,7 +207,7 @@ function mostrarProductos(listProducts, targetActions) {
         let domBtnAltaCarrito = document.getElementById(`agregar-carrito-${producto.id}`)
         let domCantAComprar = document.getElementById(`cant-carrito-${producto.id}`)
         domBtnAltaCarrito?.addEventListener("click", () => {
-            enviarACarrito(producto.id, domCantAComprar.value)
+            enviarACarrito(producto, domCantAComprar.value)
             domCantAComprar.value = ""
         })
     })
@@ -223,27 +224,40 @@ function actionButtons (target, idProd) {
     return actions[target]
 }
 
-function enviarACarrito(id, cant) {
-    const cantCompra = parseInt(cant)
-    !validarRepetido(id) ? altaCarrito(id, cantCompra) : agregarRepetidoEnCarrito(id, cantCompra)
-    carritoAStorage()
-    mostrarCarrito()
+function enviarACarrito({id, stock}, cantSolicitada) {
+    const cantCompra = parseInt(cantSolicitada)
+    !validarRepetido(id) ? altaCarrito(id, stock, cantCompra) : agregarRepetidoEnCarrito(id, stock, cantCompra)
 }
 
 validarRepetido = (id) => carrito.some((objectCarrito) => objectCarrito.id === id)
 
-function altaCarrito(id, cant) {
-    let objectCarrito = {
-        id: id,
-        cant: cant
+function altaCarrito(id, stock, cantSolicitada) {
+    if (cantSolicitada <= stock) {
+        let objectCarrito = {
+            id: id,
+            cant: cantSolicitada
+        }
+        carrito.push(objectCarrito)
+        carritoAStorage()
+        mostrarCarrito()
     }
-    carrito.push(objectCarrito)
+    else {
+        alert(`No disponemos de la cantidad solicitada, puede comprar un máximo de ${stock} unidades`)
+    }
 }
 
-function agregarRepetidoEnCarrito(id, cant) {
+function agregarRepetidoEnCarrito(id, stock, nuevaCantSolicitada) {
     const idsCarrito = carrito.map((objectCarrito) => objectCarrito.id)
     const posicionRepetido = idsCarrito.indexOf(id)
-    carrito[posicionRepetido].cant += cant
+    const acumCantSolicitada = carrito[posicionRepetido].cant + nuevaCantSolicitada
+    if (acumCantSolicitada <= stock) {
+        carrito[posicionRepetido].cant = acumCantSolicitada
+        carritoAStorage()
+        mostrarCarrito()
+    }
+    else {
+        alert(`No disponemos de la cantidad solicitada, puede comprar un máximo de ${stock} unidades`)
+    }
 }
 
 function carritoAStorage() {
@@ -259,36 +273,51 @@ function storageACarrito() {
     }
 }
 
-/* El carrito guarda objetos distintos que el catálogo, únicamente el id y la cantidad a comprar por el usuario
+/* El carrito guarda únicamente el id y la cantidad a comprar por el usuario
    No guardo el producto completo porque ocuparía más espacio en memoria en vano, con sólo el id, puedo rearmar el producto */
 
 function mostrarCarrito() {   //Obtengo los atributos de los productos del catálogo que se encuentran en el carrito
     domCarrito.innerHTML = ""
     totalCompra = 0
-    carrito.forEach((objectCarrito) => {
-        // itemCatalogo es un array del producto buscado
-        let itemCatalogo = productos.filter((prod) => prod.id === objectCarrito.id)
-        let objectCatalogo = itemCatalogo[0]
+    carrito.forEach(({id, cant}) => {
+        let prodCatalogo = productos.find((prod) => prod.id === id)
         let domItemCarrito = document.createElement("div")
         domItemCarrito.className = "producto-card"
-        domItemCarrito.id = `item-carrito-${objectCarrito.id}`
+        domItemCarrito.id = `item-carrito-${id}`
         domItemCarrito.innerHTML = `
-        <img src="${objectCatalogo.imagen}" alt="${objectCatalogo.tipoProd}" class="producto-img">
+        <img src="${prodCatalogo.imagen}" alt="${prodCatalogo.tipoProd}" class="producto-img">
         <div class="producto__info">
-        <h3>Producto: ${objectCatalogo.tipoProd} - ${objectCatalogo.marca}</h3>
-        <p>Precio unitario: ${objectCatalogo.precio} - Cantidad a comprar: ${objectCarrito.cant}</p>
-        <h4>Subtotal: ${objectCatalogo.precio * objectCarrito.cant}</h4>
+        <h3>Producto: ${prodCatalogo.tipoProd} - ${prodCatalogo.marca}</h3>
+        <p>Precio unitario: ${prodCatalogo.precio} - Cantidad a comprar: ${cant}</p>
+        <h4>Subtotal: ${prodCatalogo.precio * cant}</h4>
         </div>
         `
         domCarrito.append(domItemCarrito)
-        totalCompra += objectCatalogo.precio * objectCarrito.cant
+        totalCompra += prodCatalogo.precio * cant
     })
+}
+
+function finalizarCompra() {
+    calcularTotalCompra()
+    actualizarStock()
+    vaciarCarrito()
+    mostrarCarrito()
 }
 
 function calcularTotalCompra() {
     domTotalCompra.innerText += `$${totalCompra}`
+}
+
+function actualizarStock() {
+    carrito.forEach(({id, cant}) => {
+        const prodCatalogo = productos.find((prod) => prod.id === id)
+        prodCatalogo.disminuirStock(cant)
+    })
+    mostrarProductos(productos, "")
+}
+
+function vaciarCarrito() {
     carrito = []
-    mostrarCarrito()
     localStorage.clear()
 }
 
