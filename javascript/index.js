@@ -152,8 +152,10 @@ function gestionarLogin(event) {
         domCloseSession.innerText += `${objectUser.user} (Salir)`
         domSearch.hidden = false
         carrito = importarStorage("carrito") || []
-        productos = importarStorage("catalogo") || []
+        // Regenero objetos de catálogo con el array de productos importado de LS
+        cargarCatalogoImportado(importarStorage("catalogo") || [])
         console.log(productos)
+        console.log("Mostré los productos importados")
         mostrarCarrito()
         !objectUser.esAdmin() ? mostrarProductos(productos, "client") : mostrarProductos(productos,"admin")
     }
@@ -236,6 +238,7 @@ function actionButtons (target, idProd) {
 function enviarACarrito({id, stock}, cantSolicitada) {
     const cantCompra = parseInt(cantSolicitada)
     !validarRepetido(id) ? altaCarrito(id, stock, cantCompra) : agregarRepetidoEnCarrito(id, stock, cantCompra)
+    calcularTotalCompra()
 }
 
 validarRepetido = (id) => carrito.some((objectCarrito) => objectCarrito.id === id)
@@ -278,6 +281,11 @@ function importarStorage(nombre) {
     return JSON.parse(localStorage.getItem(nombre))
 }
 
+function cargarCatalogoImportado(productosImportados) {
+    productos = []
+    productosImportados.forEach(({id, tipoProd, marca, precio, stock, imagen}) => productos.push(new Producto(id, tipoProd, marca, precio, stock, imagen)))
+}
+
 /* El carrito guarda únicamente el id y la cantidad a comprar por el usuario
    No guardo el producto completo porque ocuparía más espacio en memoria en vano, con sólo el id, puedo rearmar el producto */
 
@@ -303,20 +311,21 @@ function mostrarCarrito() {   //Obtengo los atributos de los productos del catá
 }
 
 function finalizarCompra() {
-    calcularTotalCompra()
+    // calcularTotalCompra()
+    domTotalCompra.innerText = "Importe Total Compra: "
     actualizarStockCatalogo()
     vaciarCarrito()
-    mostrarProductos(productos, "")
+    mostrarProductos(productos, "client")
     mostrarCarrito()
 }
 
 function calcularTotalCompra() {
-    domTotalCompra.innerText += `$${totalCompra}`
+    domTotalCompra.innerText = `Importe Total Compra: $${totalCompra}`
 }
 
 function actualizarStockCatalogo() {
     carrito.forEach(({id, cant}) => {
-        const prodCatalogo = productos.find((prod) => prod.id === id)
+        let prodCatalogo = productos.find((prod) => prod.id === id)
         prodCatalogo.disminuirStock(cant)
     })
     enviarAStorage(productos, "catalogo")
@@ -341,6 +350,7 @@ function cargarCatalogoPrueba() {
     productos.push(new Producto(8, "Tubo Pelotas", "Adidas", 2000, 8, "./img/pelotas-adidas.jpg"))
     productos.push(new Producto(9, "Tubo Pelotas", "Prince", 1500, 4, "./img/pelotas-prince.jpg"))
 
+    console.log(productos)
     enviarAStorage(productos, "catalogo")
     mostrarProductos(productos, "client")
 }
