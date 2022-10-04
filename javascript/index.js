@@ -154,8 +154,6 @@ function gestionarLogin(event) {
         carrito = importarStorage("carrito") || []
         // Regenero objetos de catálogo con el array de productos importado de LS
         cargarCatalogoImportado(importarStorage("catalogo") || [])
-        console.log(productos)
-        console.log("Mostré los productos importados")
         mostrarCarrito()
         !objectUser.esAdmin() ? mostrarProductos(productos, "client") : mostrarProductos(productos,"admin")
     }
@@ -173,7 +171,7 @@ function searchProduct(event) {
     event.preventDefault()
     let searchProd = domSearchProduct.value
     let listProducts = productos.filter((prod) => prod.tipoProd.toLowerCase().includes(searchProd.toLowerCase()))
-    searchProd == "" ? alert("Debe ingresar un producto a buscar") : mostrarProductos(listProducts,"")
+    searchProd == "" ? alert("Debe ingresar un producto a buscar") : mostrarProductos(listProducts,"client")
     domSearchForm.reset()
 }
 
@@ -350,7 +348,6 @@ function cargarCatalogoPrueba() {
     productos.push(new Producto(8, "Tubo Pelotas", "Adidas", 2000, 8, "./img/pelotas-adidas.jpg"))
     productos.push(new Producto(9, "Tubo Pelotas", "Prince", 1500, 4, "./img/pelotas-prince.jpg"))
 
-    console.log(productos)
     enviarAStorage(productos, "catalogo")
     mostrarProductos(productos, "client")
 }
